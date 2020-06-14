@@ -1,0 +1,101 @@
+# Getting and Cleaning Data Course Project --------------------------------
+
+
+# URL- DATA ---------------------------------------------------------------
+
+zipUrl <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
+zipFile <- "UCI HAR Dataset.zip"
+
+if (!file.exists(zipFile)) {
+  download.file(zipUrl, zipFile, mode = "wb")
+}
+
+# unzip zip file containing data if data directory doesn't already exist
+dataPath <- "UCI HAR Dataset"
+if (!file.exists(dataPath)) {
+  unzip(zipFile)
+}
+
+# Reading Data ----------------------------------------------
+feature_test <- read.table(file.path(dataPath, "test", "X_test.txt"))
+feature_train <- read.table(file.path(dataPath, "train", "X_train.txt"))
+activity_test <- read.table(file.path(dataPath, "test", "y_test.txt"))
+activity_train <- read.table(file.path(dataPath, "train", "y_train.txt"))
+subject_test <- read.table(file.path(dataPath, "test", "subject_test.txt"))
+subject_train <- read.table(file.path(dataPath, "train", "subject_train.txt"))
+feature <- read.table(file.path(dataPath, "features.txt"), as.is = TRUE)
+activity <- read.table(file.path(dataPath, "activity_labels.txt"))
+
+# Merges the training and the test sets to create one data set -------------
+feature_data <- merge(x = feature_test, y= feature_train, all=TRUE)
+activity_data <- rbind(x = activity_test, y= activity_train)
+subject_data <- rbind(subject_test,subject_train)
+
+names(feature_data) <- feature$V2
+names(subject_data) <- c("subject")
+names(activity_data) <- c("activity")
+
+
+dataCombine <- cbind(subject_data,activity_data)
+Data <- cbind(feature_data, dataCombine)
+
+# Extracts only the measurements on the mean and standard deviation --------
+feature <- feature[,2]
+library(stringr)
+index_mean <- grep("mean", feature, value=F)
+index_std <- grep("std",feature,value = F)
+index_me_st <- sort(c(index_mean,index_std))
+feature_data2 <- feature_data[,index_me_st]
+
+## OPTIONAL FORM 2
+subdFeaturesNames<-feature$V2[grep("mean\\(\\)|std\\(\\)", feature$V2)]
+selectedNames<-c(as.character(subdFeaturesNames), "subject", "activity" )
+Data<-subset(Data,select=selectedNames)
+
+# Uses descriptive activity names to name the activities in the data -------
+for(i in 1:nrow(activity_data)){
+  if(activity_data[i,]==1){
+    activity_data[i,] <- "WALKING" 
+  }
+  else if(activity_data[i,]==2){
+    activity_data[i,]<-"WALKING_UPSTAIRS"
+  }
+  else if(activity_data[i,]==3){
+    activity_data[i,]<-"WALKING_DOWNSTAIRS"
+  }
+  else if(activity_data[i,]==4){
+    activity_data[i,]<-"SITTING"
+  }
+  else if(activity_data[i,]==5){
+    activity_data[i,]<-"SITTING"
+  }
+  else{
+    activity_data[i,]<-"LAYING"
+  }
+}
+
+# Appropriately labels the data set with descriptive variable name --------
+names(Data)<-gsub("^t", "time", names(Data))
+names(Data)<-gsub("^f", "frequency", names(Data))
+names(Data)<-gsub("Acc", "Accelerometer", names(Data))
+names(Data)<-gsub("Gyro", "Gyroscope", names(Data))
+names(Data)<-gsub("Mag", "Magnitude", names(Data))
+names(Data)<-gsub("BodyBody", "Body", names(Data))
+names(Data) <- gsub("[- ()]","",names(Data))
+
+# From the data set in step 4, creates a second, independent tidy  --------
+library(plyr)
+Data2<-aggregate(. ~subject + activity, Data, mean)
+Data2<-Data2[order(Data2$subject,Data2$activity),]
+write.table(Data2, file = "tidydata.txt",row.name=FALSE)
+
+
+
+
+
+
+
+
+
+
+
